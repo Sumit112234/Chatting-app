@@ -1,4 +1,4 @@
-// Signup page
+"use client"
 import AuthForm from "@/components/auth/AuthForm"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
