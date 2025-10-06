@@ -163,8 +163,10 @@ export default function ChatWindow({ chat }) {
   }
 
   const handleFileUploadComplete = async (file, category, onProgress) => {
+
+    // console.log(user, chat, )
     try {
-      const filePath = generateFilePath(user.uid, chat.id, file.name, category)
+      const filePath = generateFilePath(user.uid,chat.participants.find((id)=> id === user.uid) ?? chat.participantId, file.name, category)
       const downloadURL = await uploadFile(file, filePath, onProgress)
 
       const metadata = {
@@ -234,22 +236,26 @@ export default function ChatWindow({ chat }) {
 
   return (
     <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
-          {chatMessages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isOwn={msg.senderId === user?.uid}
-              showAvatar={msg.senderId !== user?.uid}
-            />
-          ))}
-          {typingUsersList.length > 0 && <TypingIndicator users={typingUsersList} />}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+      {/* Messages Area */}
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="space-y-4 p-4">
+            {chatMessages.map((msg) => (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isOwn={msg.senderId === user?.uid}
+                showAvatar={msg.senderId !== user?.uid}
+              />
+            ))}
+            {typingUsersList.length > 0 && <TypingIndicator users={typingUsersList} />}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+      </div>
 
-      <div className="p-4 border-t bg-background">
+      {/* Input Area */}
+      <div className="flex-shrink-0 p-4 border-t bg-background">
         <div className="flex items-end space-x-2">
           {/* Attachment Button */}
           <div className="relative" ref={attachmentMenuRef}>
@@ -258,6 +264,7 @@ export default function ChatWindow({ chat }) {
               size="icon"
               type="button"
               onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              className="flex-shrink-0"
             >
               <Paperclip className="h-5 w-5" />
             </Button>
@@ -297,7 +304,7 @@ export default function ChatWindow({ chat }) {
           </div>
 
           {/* Input Field */}
-          <div className="flex-1 relative" ref={emojiRef}>
+          <div className="flex-1 relative min-w-0" ref={emojiRef}>
             <Input
               ref={inputRef}
               value={message}
@@ -333,6 +340,7 @@ export default function ChatWindow({ chat }) {
             <Button 
               onClick={handleSendMessage}
               size="icon"
+              className="flex-shrink-0"
             >
               <Send className="h-5 w-5" />
             </Button>
@@ -341,6 +349,7 @@ export default function ChatWindow({ chat }) {
               variant={isRecording ? "destructive" : "ghost"}
               size="icon"
               onClick={handleToggleRecording}
+              className="flex-shrink-0"
             >
               {isRecording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </Button>
@@ -367,6 +376,380 @@ export default function ChatWindow({ chat }) {
     </div>
   )
 }
+
+// "use client"
+
+// import { useState, useRef, useEffect } from "react"
+// import { Button } from "@/components/ui/button"
+// import { Input } from "@/components/ui/input"
+// import { ScrollArea } from "@/components/ui/scroll-area"
+// import { useAuth } from "@/contexts/AuthContext"
+// import { useChat } from "@/hooks/useChat"
+// import { Send, Paperclip, Smile, Mic, Square } from "lucide-react"
+// import MessageBubble from "./MessageBubble"
+// import TypingIndicator from "./TypingIndicator"
+// import FileUploadModal from "./FileUploadModal"
+// import EmojiPicker from "./EmojiPicker"
+// import { uploadFile, generateFilePath } from "@/lib/storage"
+
+// export default function ChatWindow({ chat }) {
+//   const { user } = useAuth()
+//   const {
+//     messages,
+//     typingUsers,
+//     loadChatMessages,
+//     loadTypingIndicators,
+//     sendChatMessage,
+//     markChatAsRead,
+//     setUserTyping,
+//   } = useChat()
+  
+//   const [message, setMessage] = useState("")
+//   const [isTyping, setIsTyping] = useState(false)
+//   const [showFileUpload, setShowFileUpload] = useState(false)
+//   const [uploadType, setUploadType] = useState("all")
+//   const [showEmoji, setShowEmoji] = useState(false)
+//   const [isRecording, setIsRecording] = useState(false)
+//   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false)
+  
+//   const messagesEndRef = useRef(null)
+//   const inputRef = useRef(null)
+//   const typingTimeoutRef = useRef(null)
+//   const mediaRecorderRef = useRef(null)
+//   const recordedChunksRef = useRef([])
+//   const emojiRef = useRef(null)
+//   const attachmentMenuRef = useRef(null)
+
+//   // Get messages directly from context
+//   const chatMessages = messages[chat.id] || []
+//   const chatTypingUsers = typingUsers[chat.id] || {}
+
+//   console.log('ChatWindow render - chatId:', chat.id, 'messages count:', chatMessages.length)
+
+//   const scrollToBottom = () => {
+//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+//   }
+
+//   // Scroll when messages change
+//   useEffect(() => {
+//     scrollToBottom()
+//   }, [chatMessages.length])
+
+//   // Set up message listeners
+//   useEffect(() => {
+//     console.log('Setting up listeners for chat:', chat.id)
+//     if (!chat.id) return
+
+//     // Load messages and set up real-time listener
+//     const unsubscribeMessages = loadChatMessages(chat.id)
+//     const unsubscribeTyping = loadTypingIndicators(chat.id)
+
+//     // Mark as read
+//     markChatAsRead(chat.id)
+
+//     return () => {
+//       console.log('Cleaning up listeners for chat:', chat.id)
+//       if (unsubscribeMessages) unsubscribeMessages()
+//       if (unsubscribeTyping) unsubscribeTyping()
+//     }
+//   }, [chat.id])
+
+//   // Handle typing indicator
+//   useEffect(() => {
+//     if (isTyping) {
+//       setUserTyping(chat.id, true)
+
+//       if (typingTimeoutRef.current) {
+//         clearTimeout(typingTimeoutRef.current)
+//       }
+
+//       typingTimeoutRef.current = setTimeout(() => {
+//         setIsTyping(false)
+//         setUserTyping(chat.id, false)
+//       }, 3000)
+//     } else {
+//       setUserTyping(chat.id, false)
+//     }
+
+//     return () => {
+//       if (typingTimeoutRef.current) {
+//         clearTimeout(typingTimeoutRef.current)
+//       }
+//     }
+//   }, [isTyping, chat.id])
+
+//   // Close attachment menu when clicking outside
+//   useEffect(() => {
+//     const handler = (e) => {
+//       if (!attachmentMenuRef.current?.contains(e.target)) {
+//         setShowAttachmentMenu(false)
+//       }
+//     }
+//     if (showAttachmentMenu) {
+//       document.addEventListener("mousedown", handler)
+//     }
+//     return () => document.removeEventListener("mousedown", handler)
+//   }, [showAttachmentMenu])
+
+//   // Close emoji picker when clicking outside
+//   useEffect(() => {
+//     const handler = (e) => {
+//       if (!emojiRef.current?.contains(e.target)) {
+//         setShowEmoji(false)
+//       }
+//     }
+//     if (showEmoji) {
+//       document.addEventListener("mousedown", handler)
+//     }
+//     return () => document.removeEventListener("mousedown", handler)
+//   }, [showEmoji])
+
+//   const handleSendMessage = async (e) => {
+//     e.preventDefault()
+//     if (!message.trim()) return
+
+//     const messageText = message.trim()
+//     console.log('Sending message:', messageText)
+    
+//     // Clear input immediately
+//     setMessage("")
+//     setIsTyping(false)
+
+//     try {
+//       await sendChatMessage(chat.id, messageText)
+//       console.log('Message sent successfully')
+//     } catch (error) {
+//       console.error("Error sending message:", error)
+//       // Optionally restore message on error
+//       setMessage(messageText)
+//     }
+//   }
+
+//   const handleInputChange = (e) => {
+//     setMessage(e.target.value)
+
+//     if (e.target.value.trim() && !isTyping) {
+//       setIsTyping(true)
+//     } else if (!e.target.value.trim() && isTyping) {
+//       setIsTyping(false)
+//     }
+//   }
+
+//   const handleFileUpload = (type) => {
+//     setUploadType(type)
+//     setShowFileUpload(true)
+//     setShowAttachmentMenu(false)
+//   }
+
+//   const handleFileUploadComplete = async (file, category, onProgress) => {
+
+//     // console.log(user, chat, )
+//     try {
+//       const filePath = generateFilePath(user.uid,chat.participants.find((id)=> id === user.uid) ?? chat.participantId, file.name, category)
+//       const downloadURL = await uploadFile(file, filePath, onProgress)
+
+//       const metadata = {
+//         type: category,
+//         fileName: file.name,
+//         size: file.size,
+//         mimeType: file.type,
+//         url: downloadURL,
+//         path: filePath,
+//       }
+
+//       await sendChatMessage(chat.id, `Shared a ${category}`, category, metadata)
+//       return { success: true, url: downloadURL }
+//     } catch (error) {
+//       console.error("Error uploading file:", error)
+//       throw error
+//     }
+//   }
+
+//   const handleEmojiSelect = (emoji) => {
+//     setMessage((prev) => `${prev}${emoji}`)
+//     setShowEmoji(false)
+//     inputRef.current?.focus()
+//   }
+
+//   const handleToggleRecording = async () => {
+//     try {
+//       if (!isRecording) {
+//         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+//         const mr = new MediaRecorder(stream)
+//         recordedChunksRef.current = []
+        
+//         mr.ondataavailable = (e) => {
+//           if (e.data && e.data.size > 0) {
+//             recordedChunksRef.current.push(e.data)
+//           }
+//         }
+        
+//         mr.onstop = async () => {
+//           try {
+//             const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" })
+//             const file = new File([blob], `voice-${Date.now()}.webm`, { type: "audio/webm" })
+//             await handleFileUploadComplete(file, "audio", (p) => console.log("Audio upload:", p))
+//           } catch (err) {
+//             console.error("Error finalizing audio:", err)
+//           } finally {
+//             stream.getTracks().forEach((t) => t.stop())
+//           }
+//         }
+        
+//         mr.start()
+//         mediaRecorderRef.current = mr
+//         setIsRecording(true)
+//       } else {
+//         mediaRecorderRef.current?.stop()
+//         setIsRecording(false)
+//       }
+//     } catch (err) {
+//       console.error("Mic access error:", err)
+//       setIsRecording(false)
+//     }
+//   }
+
+//   const typingUsersList = Object.entries(chatTypingUsers)
+//     .filter(([userId, data]) => data.isTyping && userId !== user?.uid)
+//     .map(([userId]) => ({ id: userId, name: "Someone" }))
+
+//   return (
+//     <div className="flex flex-col ">
+//       <ScrollArea className="flex-1 p-4 bg-yellow-200 max-h-screen">
+//         <div className="space-y-4 bg-pink-400 min-h-screen">
+//           {chatMessages.map((msg) => (
+//             <MessageBubble
+//               key={msg.id}
+//               message={msg}
+//               isOwn={msg.senderId === user?.uid}
+//               showAvatar={msg.senderId !== user?.uid}
+//             />
+//           ))}
+//           {typingUsersList.length > 0 && <TypingIndicator users={typingUsersList} />}
+//           <div ref={messagesEndRef} />
+//         </div>
+//       </ScrollArea>
+
+//       <div className="p-4 border-t bg-background">
+//         <div className="flex items-end space-x-2">
+//           {/* Attachment Button */}
+//           <div className="relative" ref={attachmentMenuRef}>
+//             <Button
+//               variant="ghost"
+//               size="icon"
+//               type="button"
+//               onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+//             >
+//               <Paperclip className="h-5 w-5" />
+//             </Button>
+
+//             {showAttachmentMenu && (
+//               <div className="absolute bottom-full left-0 mb-2 w-48 bg-popover border rounded-lg shadow-lg overflow-hidden z-50">
+//                 <button
+//                   type="button"
+//                   onClick={() => handleFileUpload("image")}
+//                   className="w-full px-4 py-3 hover:bg-accent text-left text-sm"
+//                 >
+//                   📷 Photo
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => handleFileUpload("camera")}
+//                   className="w-full px-4 py-3 hover:bg-accent text-left text-sm"
+//                 >
+//                   📸 Camera
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => handleFileUpload("document")}
+//                   className="w-full px-4 py-3 hover:bg-accent text-left text-sm"
+//                 >
+//                   📄 Document
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => handleFileUpload("all")}
+//                   className="w-full px-4 py-3 hover:bg-accent text-left text-sm"
+//                 >
+//                   📎 All Files
+//                 </button>
+//               </div>
+//             )}
+//           </div>
+
+//           {/* Input Field */}
+//           <div className="flex-1 relative" ref={emojiRef}>
+//             <Input
+//               ref={inputRef}
+//               value={message}
+//               onChange={handleInputChange}
+//               placeholder="Type a message..."
+//               className="pr-10"
+//               onKeyDown={(e) => {
+//                 if (e.key === "Enter" && !e.shiftKey) {
+//                   e.preventDefault()
+//                   handleSendMessage(e)
+//                 }
+//               }}
+//             />
+//             <Button
+//               variant="ghost"
+//               size="icon"
+//               type="button"
+//               className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+//               onClick={() => setShowEmoji(!showEmoji)}
+//             >
+//               <Smile className="h-4 w-4" />
+//             </Button>
+            
+//             {showEmoji && (
+//               <div className="absolute bottom-full right-0 mb-2">
+//                 <EmojiPicker onSelect={handleEmojiSelect} />
+//               </div>
+//             )}
+//           </div>
+
+//           {/* Send/Voice Button */}
+//           {message.trim() ? (
+//             <Button 
+//               onClick={handleSendMessage}
+//               size="icon"
+//             >
+//               <Send className="h-5 w-5" />
+//             </Button>
+//           ) : (
+//             <Button
+//               variant={isRecording ? "destructive" : "ghost"}
+//               size="icon"
+//               onClick={handleToggleRecording}
+//             >
+//               {isRecording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+//             </Button>
+//           )}
+//         </div>
+//       </div>
+
+//       {showFileUpload && (
+//         <FileUploadModal
+//           isOpen={showFileUpload}
+//           onClose={() => setShowFileUpload(false)}
+//           onUpload={handleFileUploadComplete}
+//           allowedTypes={
+//             uploadType === "image"
+//               ? ["image"]
+//               : uploadType === "camera"
+//                 ? ["image"]
+//                 : uploadType === "document"
+//                   ? ["document"]
+//                   : ["image", "video", "audio", "document"]
+//           }
+//         />
+//       )}
+//     </div>
+//   )
+// }
+
+
 // "use client"
 
 // import { useState, useRef, useEffect } from "react"

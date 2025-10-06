@@ -37,7 +37,7 @@ export default function HomePage() {
       <Card className="w-full max-w-md">
         <CardContent className="flex flex-col items-center justify-center p-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading ChatApp...</p>
+          <p className="text-muted-foreground">Loading wait for a while...</p>
         </CardContent>
       </Card>
     </div>
