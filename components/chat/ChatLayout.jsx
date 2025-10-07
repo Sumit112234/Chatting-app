@@ -376,6 +376,7 @@ export default function ChatLayout() {
           onEndCall={endCall}
           onToggleMute={toggleMute}
           onToggleVideo={toggleVideo}
+          peerConnection={currentCall.peerConnection}
         />
       )}
 
